@@ -1,0 +1,11 @@
+{
+  "name": "dmem-marketplace",
+  "owner": "daren47",
+  "plugins": [
+    {
+      "name": "dmem-openclaw",
+      "source": "./",
+      "description": "dmem memory system plugin for OpenClaw"
+    }
+  ]
+}
