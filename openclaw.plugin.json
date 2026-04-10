@@ -1,0 +1,15 @@
+{
+  "id": "dmem",
+  "name": "DMem",
+  "version": "0.0.1",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "serviceUrl": {
+        "type": "string",
+	"default": "https://dmem.ai"
+      }
+    }
+  }
+}
