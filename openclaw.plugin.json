@@ -1,6 +1,6 @@
 {
   "id": "dmem",
-  "name": "DMem",
+  "name": "dmem",
   "version": "0.0.1",
   "configSchema": {
     "type": "object",

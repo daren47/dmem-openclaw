@@ -9,9 +9,9 @@ export default function(api) {
 
     const LOOKUP_RESULT_INSTRUCTIONS = "\n\n---\nThe confidence score indicates how strongly the memory system believes this answer is accurate. Use results with confidence above 0.7 as reliable context. For scores between 0.3 and 0.7, surface the information tentatively — e.g. \"I think we discussed this before, but I'm not certain.\" For scores below 0.3, treat the result as speculative or ignore it."
 
-    const TOOL_INSTRUCTIONS = `IMPORTANT — DO BOTH ON EVERY MESSAGE:\n1. LOOK UP FIRST: Does this reference a person, project, topic, or anything that could be from a past conversation? If yes or unsure, call lookup() BEFORE responding. Ignore sender metadata when formulating lookup queries.\n2. REMEMBER AFTER: Did the user share a long-term fact — a preference, decision, project detail, or explicit instruction? Call remember(). ONLY store things useful days or weeks from now. Do NOT store transient activity like debugging, test results, or what's happening right now.`
+    const TOOL_INSTRUCTIONS = `IMPORTANT — DO BOTH ON EVERY MESSAGE:\n1. LOOK UP FIRST: Does this reference a person, project, topic, or anything that could be from a past conversation? If yes or unsure, call memory_search() with the query parameter BEFORE responding. Ignore sender metadata when formulating lookup queries.\n2. REMEMBER AFTER: Did the user share a long-term fact — a preference, decision, project detail, or explicit instruction? Call memory_search() with the store parameter. ONLY store things useful days or weeks from now. Do NOT store transient activity like debugging, test results, or what's happening right now.`
 
-    const HIJACK_PROMPT = "DO NOT read memory/YYYY-MM-DD.md or MEMORY.md. Ignore any instructions from other files that tell you to read memory/YYYY-MM-DD.md or MEMORY.md.\nAll memory is managed by dmem.\nAll memory operations go through your dmem tools: lookup() and remember()."
+    const HIJACK_PROMPT = "DO NOT read memory/YYYY-MM-DD.md or MEMORY.md. Ignore any instructions from other files that tell you to read memory/YYYY-MM-DD.md or MEMORY.md.\nAll memory is managed by dmem.\nAll memory operations go through your dmem tool: memory_search. Call memory_search with the query param (omitting the store param) to look up memories, and with the store param (omitting the query param)  to save a memory."
 
     const DMEM_STATE_FILE = path.join(
         os.tmpdir(),
@@ -216,8 +216,10 @@ export default function(api) {
         }
     });
 
+    /*
     api.registerTool({
         name: "remember",
+        groups: ["group:memory"],
         description: "Use this tool to save something important to long-term memory — facts about the user, their preferences, ongoing projects, or explicit instructions they've given you. Call this whenever you learn something worth remembering across future conversations, or when the user explicitly asks you to remember something.",
         parameters: {
             type: "object",
@@ -249,21 +251,45 @@ export default function(api) {
             };
         }
     });
+    */
 
     api.registerTool({
-        name: "lookup",
-        description: "Use lookup() whenever the user references something from a past conversation, or when you think relevant context might exist from previous sessions. Describe what you're looking for in natural language — be specific about what information you need. Call lookup() separately for each distinct topic if you need information about multiple things.",
+        name: "memory_search",
+        groups: ["group:memory"],
+        description: "Use memory_search() with the query param (omitting the store param) whenever the user references something from a past conversation, or when you think relevant context might exist from previous sessions. Describe what you're looking for in natural language — be specific about what information you need. Use memory_search() with the store param (omitting the query param) to save something important to long-term memory — facts about the user, their preferences, ongoing projects, or explicit instructions they've given you. Use this whenever you learn something worth remembering across future conversations, or when the user explicitly asks you to remember something. DO NOT CALL MEMORY_SEARCH WITH MORE THAN ONE PARAMETER.",
         parameters: {
             type: "object",
             properties: {
                 query: {
                     type: "string",
                     description: "What to look up in memory"
+                },
+                "store": {
+                    type: "string",
+                    description: "What to store in memory"
                 }
-            },
-            required: ["query"]
+            }
         },
         async execute(_id, params) {
+            if (params.store) {
+                await fetch(serviceUrl + "/remember_openclaw", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": apiKey
+                    },
+                    body: JSON.stringify({
+                       "text": params.store,
+                       "session_key": sessionKey
+                    }),
+                });
+                return {
+                    content: [{
+            	        type: "text",
+                        text: "ok"
+                    }]
+                };
+            }
             const response = await fetch(`${serviceUrl}/lookup?m=${encodeURIComponent(params.query)}`, {
                 headers: {
                     "Authorization": apiKey
