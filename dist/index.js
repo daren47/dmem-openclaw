@@ -1,34 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-
-export default function(api) {
-
+export default function (api) {
     const serviceUrl = api.pluginConfig?.serviceUrl ?? "https://dmem.ai";
     const apiKey = api.pluginConfig?.apiKey ?? "local";
     const reinjectFrequency = api.pluginConfig?.reinjectFrequency ?? 3;
-
-    const LOOKUP_RESULT_INSTRUCTIONS = "\n\n---\nThe confidence score indicates how strongly the memory system believes this answer is accurate. Use results with confidence above 0.7 as reliable context. For scores between 0.3 and 0.7, surface the information tentatively — e.g. \"I think we discussed this before, but I'm not certain.\" For scores below 0.3, treat the result as speculative or ignore it."
-
-    const TOOL_INSTRUCTIONS = `IMPORTANT — DO ON EVERY MESSAGE:\nLOOK UP FIRST: Does this reference a person, project, topic, or anything that could be from a past conversation, or is there potentially relevant context from a past conversation? If yes or unsure, call memory_search() BEFORE responding. Ignore sender metadata when formulating memory_search queries.`
-
-    const DMEM_STATE_FILE = path.join(
-        os.tmpdir(),
-        "dmem-last-session"
-    );
-
+    const LOOKUP_RESULT_INSTRUCTIONS = "\n\n---\nThe confidence score indicates how strongly the memory system believes this answer is accurate. Use results with confidence above 0.7 as reliable context. For scores between 0.3 and 0.7, surface the information tentatively — e.g. \"I think we discussed this before, but I'm not certain.\" For scores below 0.3, treat the result as speculative or ignore it.";
+    const TOOL_INSTRUCTIONS = `IMPORTANT — DO ON EVERY MESSAGE:\nLOOK UP FIRST: Does this reference a person, project, topic, or anything that could be from a past conversation, or is there potentially relevant context from a past conversation? If yes or unsure, call memory_search() BEFORE responding. Ignore sender metadata when formulating memory_search queries.`;
+    const DMEM_STATE_FILE = path.join(os.tmpdir(), "dmem-last-session");
     let turnCount = 0;
-
-    let lastSessionIds: Record<string, string> = {};
+    let lastSessionIds = {};
     try {
         lastSessionIds = JSON.parse(fs.readFileSync(DMEM_STATE_FILE, "utf-8"));
-    } catch {}
-
+    }
+    catch { }
     let sessionKey = "unknown";
-
-    const waitingForFlush: Record<string, boolean> = {};
-
-    function triggerFlush(sessionId: string, sessionKey: string, cacheSummary: boolean) {
+    const waitingForFlush = {};
+    function triggerFlush(sessionId, sessionKey, cacheSummary) {
         void fetch(serviceUrl + "/flush_openclaw", {
             method: "POST",
             headers: {
@@ -44,45 +32,38 @@ export default function(api) {
             api.logger.warn(`dmem: flush failed: ${String(err)}`);
         });
     }
-
     function persistState() {
         try {
             fs.mkdirSync(path.dirname(DMEM_STATE_FILE), { recursive: true });
             fs.writeFileSync(DMEM_STATE_FILE, JSON.stringify(lastSessionIds));
-        } catch {}
+        }
+        catch { }
     }
-
     api.on("before_tool_call", async (event, ctx) => {
         // need to set sessionKey before toolCall so that it can be sent to dmem server
-        sessionKey = (ctx as any)?.sessionKey ?? "unknown";
+        sessionKey = ctx?.sessionKey ?? "unknown";
     });
-
     api.on("after_compaction", async (event, ctx) => {
-        sessionKey = (ctx as any)?.sessionKey ?? "unknown";
+        sessionKey = ctx?.sessionKey ?? "unknown";
         const lastSessionId = lastSessionIds[sessionKey];
         if (lastSessionId) {
             triggerFlush(lastSessionId, sessionKey, false);
         }
     });
-
     api.on("before_agent_start", async (event, ctx) => {
-        const sessionId = (ctx as any)?.sessionId ?? "unknown";
-        sessionKey = (ctx as any)?.sessionKey ?? "unknown";
-
-        if (sessionKey.startsWith("slug-generator") || sessionKey.startsWith("unknown")) return {};
-
+        const sessionId = ctx?.sessionId ?? "unknown";
+        sessionKey = ctx?.sessionKey ?? "unknown";
+        if (sessionKey.startsWith("slug-generator") || sessionKey.startsWith("unknown"))
+            return {};
         const lastSessionId = lastSessionIds[sessionKey];
-
         if (lastSessionId && sessionId !== lastSessionId) {
             triggerFlush(lastSessionId, sessionKey, true);
             waitingForFlush[sessionKey] = true;
-	}
-
-	if (sessionId !== lastSessionId) {
-            lastSessionIds[sessionKey] = sessionId;
-	    persistState();
         }
-
+        if (sessionId !== lastSessionId) {
+            lastSessionIds[sessionKey] = sessionId;
+            persistState();
+        }
         if (turnCount % reinjectFrequency == 0) {
             turnCount += 1;
             return {
@@ -91,70 +72,59 @@ export default function(api) {
         }
         turnCount += 1;
     });
-
     api.on("agent_end", async (event, ctx) => {
         if (!event.success || !event.messages || event.messages.length === 0) {
             return;
         }
-
-        const sessionId = (ctx as any)?.sessionId ?? "unknown";
-        sessionKey = (ctx as any)?.sessionKey ?? "unknown";
-
+        const sessionId = ctx?.sessionId ?? "unknown";
+        sessionKey = ctx?.sessionKey ?? "unknown";
         try {
             // Find the last user message index — that's the start of the turn
             let turnStart = -1;
             for (let i = event.messages.length - 1; i >= 0; i--) {
-                const msg = event.messages[i] as Record<string, unknown>;
+                const msg = event.messages[i];
                 if (msg?.role === "user") {
                     turnStart = i;
                     break;
                 }
             }
-            if (turnStart === -1) return;
-
+            if (turnStart === -1)
+                return;
             const turnMessages = event.messages.slice(turnStart);
-            const formattedMessages: Array<{
-                role: string;
-                content: string;
-                type?: string;
-            }> = [];
-
+            const formattedMessages = [];
             for (const msg of turnMessages) {
-                if (!msg || typeof msg !== "object") continue;
-                const msgObj = msg as Record<string, unknown>;
-                const role = msgObj.role as string;
-                if (!role) continue;
-
+                if (!msg || typeof msg !== "object")
+                    continue;
+                const msgObj = msg;
+                const role = msgObj.role;
+                if (!role)
+                    continue;
                 let textContent = "";
                 const content = msgObj.content;
-
                 if (typeof content === "string") {
                     textContent = content;
-                } else if (Array.isArray(content)) {
+                }
+                else if (Array.isArray(content)) {
                     for (const block of content) {
-                        if (
-                            block &&
+                        if (block &&
                             typeof block === "object" &&
                             "text" in block &&
-                            typeof (block as Record<string, unknown>).text === "string"
-                        ) {
+                            typeof block.text === "string") {
                             textContent +=
                                 (textContent ? "\n" : "") +
-                                ((block as Record<string, unknown>).text as string);
+                                    block.text;
                         }
                     }
                 }
-
-                if (!textContent) continue;
-
+                if (!textContent)
+                    continue;
                 formattedMessages.push({
                     role,
                     content: textContent,
                 });
             }
-
-            if (formattedMessages.length === 0) return;
-
+            if (formattedMessages.length === 0)
+                return;
             await fetch(serviceUrl + "/ingest_openclaw", {
                 method: "POST",
                 headers: {
@@ -169,11 +139,11 @@ export default function(api) {
             }).catch((err) => {
                 api.logger.warn(`dmem: ingest failed: ${String(err)}`);
             });
-        } catch (err) {
+        }
+        catch (err) {
             api.logger.warn(`dmem: capture failed: ${String(err)}`);
         }
     });
-
     api.registerTool({
         name: "memory_search",
         groups: ["group:memory"],
@@ -197,9 +167,9 @@ export default function(api) {
             const data = await response.json();
             return {
                 content: [{
-                    type: "text",
-                    text: JSON.stringify(data) + LOOKUP_RESULT_INSTRUCTIONS
-                }]
+                        type: "text",
+                        text: JSON.stringify(data) + LOOKUP_RESULT_INSTRUCTIONS
+                    }]
             };
         }
     });
