@@ -2,11 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-export default function(api) {
+import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import { Type } from "@sinclair/typebox";
+
+export default definePluginEntry({
+  id: "dmem",
+  name: "dmem (Memory)",
+  description: "dmem memory_search replacement",
+
+  register(api) {
 
     const serviceUrl = api.pluginConfig?.serviceUrl ?? "https://dmem.ai";
-    const apiKey = api.pluginConfig?.apiKey ?? "local";
-    const reinjectFrequency = api.pluginConfig?.reinjectFrequency ?? 3;
+    const apiKey: string = (api.pluginConfig?.apiKey as string) ?? "local";
+    const reinjectFrequency: number = (api.pluginConfig?.reinjectFrequency as number) ?? 3;
 
     const LOOKUP_RESULT_INSTRUCTIONS = "\n\n---\nThe confidence score indicates how strongly the memory system believes this answer is accurate. Use results with confidence above 0.7 as reliable context. For scores between 0.3 and 0.7, surface the information tentatively — e.g. \"I think we discussed this before, but I'm not certain.\" For scores below 0.3, treat the result as speculative or ignore it."
 
@@ -52,11 +60,6 @@ export default function(api) {
         } catch {}
     }
 
-    api.on("before_tool_call", async (event, ctx) => {
-        // need to set sessionKey before toolCall so that it can be sent to dmem server
-        sessionKey = (ctx as any)?.sessionKey ?? "unknown";
-    });
-
     api.on("after_compaction", async (event, ctx) => {
         sessionKey = (ctx as any)?.sessionKey ?? "unknown";
         const lastSessionId = lastSessionIds[sessionKey];
@@ -83,7 +86,7 @@ export default function(api) {
             persistState();
         }
 
-        if (turnCount % reinjectFrequency == 0) {
+        if (turnCount % reinjectFrequency == 0 || sessionId !== lastSessionId) {
             turnCount += 1;
             return {
                 prependContext: `<memory-instructions>${TOOL_INSTRUCTIONS}</memory-instructions>`
@@ -176,19 +179,12 @@ export default function(api) {
 
     api.registerTool({
         name: "memory_search",
-        groups: ["group:memory"],
+        label: "Memory Search",
         description: "Use memory_search() whenever the user references something from a past conversation, or when you think relevant context might exist from previous sessions. Describe what you're looking for in natural language — be specific about what information you need.",
-        parameters: {
-            type: "object",
-            properties: {
-                query: {
-                    type: "string",
-                    description: "What to look up in memory"
-                },
-            },
-            required: ["query"]
-        },
-        async execute(_id, params) {
+        parameters: Type.Object({
+            query: Type.String(),
+        }),
+        async execute(_id, params: { query: string }) {
             const response = await fetch(`${serviceUrl}/lookup?m=${encodeURIComponent(params.query)}`, {
                 headers: {
                     "Authorization": apiKey
@@ -199,8 +195,10 @@ export default function(api) {
                 content: [{
                     type: "text",
                     text: JSON.stringify(data) + LOOKUP_RESULT_INSTRUCTIONS
-                }]
+                }],
+                details: {}
             };
         }
     });
-}
+  }
+});

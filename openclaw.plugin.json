@@ -1,7 +1,13 @@
 {
   "id": "dmem",
-  "name": "dmem",
+  "name": "dmem (Memory)",
   "version": "2026.5.10",
+  "contracts": {
+    "tools": ["memory_search"]
+  },
+  "activation": {
+    "onStartup": true
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": true,
