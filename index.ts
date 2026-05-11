@@ -80,7 +80,7 @@ export default function(api) {
 
 	if (sessionId !== lastSessionId) {
             lastSessionIds[sessionKey] = sessionId;
-	    persistState();
+            persistState();
         }
 
         if (turnCount % reinjectFrequency == 0) {
