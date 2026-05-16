@@ -178,6 +178,30 @@ export default definePluginEntry({
     });
 
     api.registerTool({
+        name: "recent_context",
+        label: "Recent Context",
+        description: "Get a summary of the last 7 days of your conversations with your user. Call this if the user asks something like 'what have we been working on'. Call with latency_matters=true unless explicitly prompted to call with latency_matters=false.",
+        parameters: Type.Object({
+            latency_matters: Type.Boolean(),
+        }),
+        async execute(_id, params: { latency_matters: boolean }) {
+            const response = await fetch(`${serviceUrl}/recent_context?hot_path=${encodeURIComponent(params.latency_matters)}`, {
+                headers: {
+                    "Authorization": apiKey
+                }
+            });
+            const data = await response.json();
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify(data)
+                }],
+                details: {}
+            };
+        }
+    });
+
+    api.registerTool({
         name: "memory_search",
         label: "Memory Search",
         description: "Use memory_search() whenever the user references something from a past conversation, or when you think relevant context might exist from previous sessions. Describe what you're looking for in natural language — be specific about what information you need.",

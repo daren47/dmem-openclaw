@@ -3,7 +3,7 @@
   "name": "dmem (Memory)",
   "version": "2026.5.10",
   "contracts": {
-    "tools": ["memory_search"]
+    "tools": ["memory_search", "recent_context"]
   },
   "activation": {
     "onStartup": true

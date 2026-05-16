@@ -45,10 +45,6 @@ export default definePluginEntry({
             }
             catch { }
         }
-        api.on("before_tool_call", async (event, ctx) => {
-            // need to set sessionKey before toolCall so that it can be sent to dmem server
-            sessionKey = ctx?.sessionKey ?? "unknown";
-        });
         api.on("after_compaction", async (event, ctx) => {
             sessionKey = ctx?.sessionKey ?? "unknown";
             const lastSessionId = lastSessionIds[sessionKey];
@@ -148,6 +144,29 @@ export default definePluginEntry({
             }
             catch (err) {
                 api.logger.warn(`dmem: capture failed: ${String(err)}`);
+            }
+        });
+        api.registerTool({
+            name: "recent_context",
+            label: "Recent Context",
+            description: "Get a summary of the last 7 days of your conversations with your user. Call this if the user asks something like 'what have we been working on'. Call with latency_matters=true unless explicitly prompted to call with latency_matters=false.",
+            parameters: Type.Object({
+                latency_matters: Type.Boolean(),
+            }),
+            async execute(_id, params) {
+                const response = await fetch(`${serviceUrl}/recent_context?hot_path=${encodeURIComponent(params.latency_matters)}`, {
+                    headers: {
+                        "Authorization": apiKey
+                    }
+                });
+                const data = await response.json();
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify(data)
+                        }],
+                    details: {}
+                };
             }
         });
         api.registerTool({
