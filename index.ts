@@ -1,6 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
-import os from "node:os";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "@sinclair/typebox";

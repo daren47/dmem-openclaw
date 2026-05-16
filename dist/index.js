@@ -32,9 +32,9 @@ __export(index_exports, {
   default: () => index_default
 });
 module.exports = __toCommonJS(index_exports);
-var import_node_fs = __toESM(require("node:fs"));
-var import_node_path = __toESM(require("node:path"));
-var import_node_os = __toESM(require("node:os"));
+var fs = __toESM(require("node:fs"));
+var path = __toESM(require("node:path"));
+var os = __toESM(require("node:os"));
 var import_plugin_entry = require("openclaw/plugin-sdk/plugin-entry");
 
 // node_modules/@sinclair/typebox/build/esm/type/guard/value.mjs
@@ -2658,14 +2658,14 @@ var index_default = (0, import_plugin_entry.definePluginEntry)({
 The confidence score indicates how strongly the memory system believes this answer is accurate. Use results with confidence above 0.7 as reliable context. For scores between 0.3 and 0.7, surface the information tentatively \u2014 e.g. "I think we discussed this before, but I'm not certain." For scores below 0.3, treat the result as speculative or ignore it.`;
     const TOOL_INSTRUCTIONS = `IMPORTANT \u2014 DO ON EVERY MESSAGE:
 LOOK UP FIRST: Does this reference a person, project, topic, or anything that could be from a past conversation, or is there potentially relevant context from a past conversation? If yes or unsure, call memory_search() BEFORE responding. Ignore sender metadata when formulating memory_search queries.`;
-    const DMEM_STATE_FILE = import_node_path.default.join(
-      import_node_os.default.tmpdir(),
+    const DMEM_STATE_FILE = path.join(
+      os.tmpdir(),
       "dmem-last-session"
     );
     let turnCount = 0;
     let lastSessionIds = {};
     try {
-      lastSessionIds = JSON.parse(import_node_fs.default.readFileSync(DMEM_STATE_FILE, "utf-8"));
+      lastSessionIds = JSON.parse(fs.readFileSync(DMEM_STATE_FILE, "utf-8"));
     } catch {
     }
     let sessionKey = "unknown";
@@ -2688,8 +2688,8 @@ LOOK UP FIRST: Does this reference a person, project, topic, or anything that co
     }
     function persistState() {
       try {
-        import_node_fs.default.mkdirSync(import_node_path.default.dirname(DMEM_STATE_FILE), { recursive: true });
-        import_node_fs.default.writeFileSync(DMEM_STATE_FILE, JSON.stringify(lastSessionIds));
+        fs.mkdirSync(path.dirname(DMEM_STATE_FILE), { recursive: true });
+        fs.writeFileSync(DMEM_STATE_FILE, JSON.stringify(lastSessionIds));
       } catch {
       }
     }
