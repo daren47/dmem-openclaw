@@ -32,137 +32,10 @@ __export(index_exports, {
   default: () => index_default
 });
 module.exports = __toCommonJS(index_exports);
-var import_node_fs = __toESM(require("node:fs"), 1);
-var import_node_path = __toESM(require("node:path"), 1);
-var import_node_os = __toESM(require("node:os"), 1);
-
-// node_modules/openclaw/dist/plugin-cache-primitives-WfwcOrBF.js
-var PluginLruCache = class {
-  #defaultMaxEntries;
-  #maxEntries;
-  #entries = /* @__PURE__ */ new Map();
-  constructor(defaultMaxEntries) {
-    this.#defaultMaxEntries = normalizeMaxEntries(defaultMaxEntries, 1);
-    this.#maxEntries = this.#defaultMaxEntries;
-  }
-  get maxEntries() {
-    return this.#maxEntries;
-  }
-  get size() {
-    return this.#entries.size;
-  }
-  setMaxEntriesForTest(value) {
-    this.#maxEntries = typeof value === "number" ? normalizeMaxEntries(value, this.#defaultMaxEntries) : this.#defaultMaxEntries;
-    this.#evictOldestEntries();
-  }
-  clear() {
-    this.#entries.clear();
-  }
-  get(cacheKey) {
-    const cached = this.getResult(cacheKey);
-    return cached.hit ? cached.value : void 0;
-  }
-  getResult(cacheKey) {
-    if (!this.#entries.has(cacheKey)) return { hit: false };
-    const cached = this.#entries.get(cacheKey);
-    this.#entries.delete(cacheKey);
-    this.#entries.set(cacheKey, cached);
-    return {
-      hit: true,
-      value: cached
-    };
-  }
-  set(cacheKey, value) {
-    if (this.#entries.has(cacheKey)) this.#entries.delete(cacheKey);
-    this.#entries.set(cacheKey, value);
-    this.#evictOldestEntries();
-  }
-  #evictOldestEntries() {
-    while (this.#entries.size > this.#maxEntries) {
-      const oldestEntry = this.#entries.keys().next();
-      if (oldestEntry.done) break;
-      this.#entries.delete(oldestEntry.value);
-    }
-  }
-};
-function normalizeMaxEntries(value, fallback) {
-  if (!Number.isFinite(value) || value <= 0) return fallback;
-  return Math.max(1, Math.floor(value));
-}
-
-// node_modules/openclaw/dist/ansi-Dqm1lzVL.js
-var ANSI_CSI_PATTERN = "\\x1b\\[[\\x20-\\x3f]*[\\x40-\\x7e]";
-var OSC8_PATTERN = "\\x1b\\]8;;.*?(?:\\x1b\\\\|\\x07)|\\x1b\\]8;;(?:\\x1b\\\\|\\x07)";
-var ANSI_CSI_REGEX = new RegExp(ANSI_CSI_PATTERN, "g");
-var OSC8_REGEX = new RegExp(OSC8_PATTERN, "g");
-var graphemeSegmenter = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter(void 0, { granularity: "grapheme" }) : null;
-
-// node_modules/openclaw/dist/schema-validator-DSVrkbYC.js
-var import_node_module = require("node:module");
-var import_meta = {};
-var require2 = (0, import_node_module.createRequire)(import_meta.url);
-var schemaCache = new PluginLruCache(512);
-
-// node_modules/openclaw/dist/config-schema-DDtADzVW.js
-function error(message) {
-  return {
-    success: false,
-    error: { issues: [{
-      path: [],
-      message
-    }] }
-  };
-}
-function emptyPluginConfigSchema() {
-  return {
-    safeParse(value) {
-      if (value === void 0) return {
-        success: true,
-        data: void 0
-      };
-      if (!value || typeof value !== "object" || Array.isArray(value)) return error("expected config object");
-      if (Object.keys(value).length > 0) return error("config must be empty");
-      return {
-        success: true,
-        data: value
-      };
-    },
-    jsonSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {}
-    }
-  };
-}
-
-// node_modules/openclaw/dist/plugin-entry-DUUsLt7Y.js
-function createCachedLazyValueGetter(value, fallback) {
-  let resolved = false;
-  let cached;
-  return () => {
-    if (!resolved) {
-      cached = (typeof value === "function" ? value() : value) ?? fallback;
-      resolved = true;
-    }
-    return cached;
-  };
-}
-function definePluginEntry({ id, name, description, kind, configSchema = emptyPluginConfigSchema, reload, nodeHostCommands, securityAuditCollectors, register }) {
-  const getConfigSchema = createCachedLazyValueGetter(configSchema);
-  return {
-    id,
-    name,
-    description,
-    ...kind ? { kind } : {},
-    ...reload ? { reload } : {},
-    ...nodeHostCommands ? { nodeHostCommands } : {},
-    ...securityAuditCollectors ? { securityAuditCollectors } : {},
-    get configSchema() {
-      return getConfigSchema();
-    },
-    register
-  };
-}
+var import_node_fs = __toESM(require("node:fs"));
+var import_node_path = __toESM(require("node:path"));
+var import_node_os = __toESM(require("node:os"));
+var import_plugin_entry = require("openclaw/plugin-sdk/plugin-entry");
 
 // node_modules/@sinclair/typebox/build/esm/type/guard/value.mjs
 var value_exports = {};
@@ -1253,9 +1126,9 @@ function FromSchema(type, propertyKeys) {
 }
 function Index(type, key, options) {
   if (IsRef(type) || IsRef(key)) {
-    const error2 = `Index types using Ref parameters require both Type and Key to be of TSchema`;
+    const error = `Index types using Ref parameters require both Type and Key to be of TSchema`;
     if (!IsSchema(type) || !IsSchema(key))
-      throw new TypeBoxError(error2);
+      throw new TypeBoxError(error);
     return Computed("Index", [type, key]);
   }
   if (IsMappedResult(key))
@@ -2771,7 +2644,7 @@ __export(type_exports2, {
 var Type = type_exports2;
 
 // index.ts
-var index_default = definePluginEntry({
+var index_default = (0, import_plugin_entry.definePluginEntry)({
   id: "dmem",
   name: "dmem (Memory)",
   description: "dmem memory_search replacement",
