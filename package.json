@@ -4,7 +4,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "build": "esbuild index.ts --bundle --platform=node --outfile=dist/index.js",
+    "build": "tsc",
     "prepublishOnly": "npm run build"
   },
   "openclaw": {
