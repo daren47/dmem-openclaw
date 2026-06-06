@@ -1,6 +1,15 @@
 {
   "name": "@dmem/dmem-openclaw",
   "version": "2026.5.10",
+  "description": "OpenClaw plugin for dmem long-term memory search and recent context recall.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daren47/dmem-openclaw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/daren47/dmem-openclaw/issues"
+  },
+  "homepage": "https://github.com/daren47/dmem-openclaw#readme",
   "main": "./dist/index.js",
   "scripts": {
     "build": "esbuild index.ts --bundle --platform=node --format=cjs --external:openclaw --outfile=dist/index.js",
